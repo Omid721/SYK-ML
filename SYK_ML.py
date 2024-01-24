@@ -1,12 +1,50 @@
+import time
+##################
+import warnings
+import pickle
+import io, requests, zipfile
+import contextlib # redirect_stdout
+import sys
+
 #####
+import multiprocessing as mp # Pool , cpu_count
 import numpy as np
 import scipy as sp
 import pandas as pd
+import sympy as sym
 import matplotlib.pyplot as plt
+import seaborn as sb
 import tensorflow as tf
 import sklearn as sk #submodules does not import automatically
 
-
+#from numba import jit, prange
+###############################################################
+import scipy.optimize # minimize
+import scipy.stats # expon
+#####
+import sklearn.utils
+import sklearn.preprocessing
+import sklearn.model_selection
+import sklearn.metrics
+#####
+from sklearn.feature_selection import RFE, RFECV, SelectFromModel
+from sklearn.decomposition import PCA
+from sklearn.manifold import MDS, LocallyLinearEmbedding, Isomap, SpectralEmbedding, TSNE
+#####
+from sklearn.dummy import DummyClassifier
+from sklearn.linear_model import RidgeClassifier, SGDClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.svm import SVC
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.ensemble import BaggingClassifier, ExtraTreesClassifier, RandomForestClassifier, GradientBoostingClassifier, AdaBoostClassifier
+#####
+from sklearn.dummy import DummyRegressor
+from sklearn.linear_model import Ridge, Lasso, LinearRegression, LogisticRegression
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.svm import SVR
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.ensemble import RandomForestRegressor
 
 #####################################################################
 

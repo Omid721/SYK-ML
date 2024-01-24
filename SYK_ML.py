@@ -197,3 +197,29 @@ our_case_prediction = model.predict(x_test_our_case)
 print("Predicted probabilities for being SYK:", decision_values_NN)
 print("="*80)
 print("Predicted probabilities for being SYK:", our_case_prediction)
+
+
+#############################################################
+
+from google.colab import drive
+import zipfile
+import io
+
+# Mount Google Drive
+drive.mount('/content/drive')
+
+# Path to the uploaded zip file
+zip_file_path = '/content/drive/MyDrive/Data/data_N_10.zip'
+
+file_to_read = 'data'
+
+# Read the ZIP file
+with zipfile.ZipFile(zip_file_path, 'r') as archive:
+    # Extract the specific file from the ZIP archive
+    with archive.open(file_to_read) as file:
+        # Read the CSV file
+        data = pd.read_csv(file)
+
+# Now 'data' contains the DataFrame with the content of the specified CSV file
+print(data)
+print(data.describe)

@@ -218,7 +218,14 @@ plt.show()
 
 
 #################################################################################
-#check for N=8
+
+
+
+
+
+
+
+
 import tensorflow as tf
 import numpy as np
 
@@ -226,29 +233,6 @@ import numpy as np
 sigma_y = np.array([[0, -1j], [1j, 0]], dtype=np.complex128)
 
 # Define the Sachdev-Ye-Kitaev (SYK) Hamiltonian
-'''
-def syk_hamiltonian(N, disorder_strength):
-    # Define the number of Majorana fermions (N should be even)
-    if N % 2 != 0:
-        raise ValueError("Number of Majorana fermions (N) should be even.")
-
-    # Random couplings
-    J = disorder_strength * np.random.randn(N, N, N, N) / np.sqrt(2)
-
-    # Build the Hamiltonian
-    H = np.zeros((2**N, 2**N), dtype=np.complex128)
-
-    for i in range(N):
-        for j in range(i+1,N):
-            for k in range(j+1,N):
-                for l in range(k+1,N):
-                    H += J[i, j, k, l] * 1j * np.kron(np.kron(np.kron(np.kron(np.kron(np.kron(np.kron(np.kron(np.eye(2**(i)), sigma_y), np.eye(2**(j-i-1))), sigma_y), np.eye(2**(k-j-1))) ,sigma_y), np.eye(2**(l-k-1))), sigma_y), np.eye(2**(N-l-1)))
-
-    return H
-'''
-
-###################################################################################
-
 from numpy import identity
 
 def tensor(a, i, N, p=2):
@@ -311,7 +295,6 @@ def majorana(N):
     return Xi
 
 def syk_hamiltonian(N, J, Xi):
-
     if N % 2 != 0:
         raise ValueError("N must be even")
 
@@ -345,91 +328,71 @@ def syk_hamiltonian(N, J, Xi):
 
 import pandas as pd
 from google.colab import drive
-# Generate training data
-N = 8  # Number of Majorana fermions (even for SYK)
-disorder_strength = 1
-num_samples = 100
-Xi = majorana(N)
-
-def haar_random_state(dimension):
-    # Generate a random complex vector
-    random_vector = np.random.normal(0, 1, size=(dimension,))
-    # Normalize the vector
-    normalized_vector = random_vector / np.linalg.norm(random_vector)
-
-    return normalized_vector
-
-# Set the dimension of the Hilbert space
-hilbert_space_dimension = 2**(N//2)
-
-# Set the dimension of the Hilbert space
-hilbert_space_dimension = 2**(N//2)
-
-
-# Generate a Haar random state
-
-
-
+# Generate testing data
 def my_gen(N_sample, N):
+  Xi = majorana(N)
   hilbert_space_dimension = 2**(N//2)
+  disorder_strength = 1
   N_SYK_sample = N_sample
-  N_Haar_sample = N_sample
-  X = np.empty((N_Haar_sample, hilbert_space_dimension+1))
   y = np.zeros((N_SYK_sample, hilbert_space_dimension+1))
-  z = np.zeros((N_SYK_sample+N_Haar_sample, hilbert_space_dimension+1))
 
-  for k in range(max(N_SYK_sample,N_Haar_sample)):
-    if k < N_Haar_sample :
-      X[k, 0:hilbert_space_dimension] = haar_random_state(hilbert_space_dimension)
-      X[k,hilbert_space_dimension] = 0
-      z[k+ N_SYK_sample, :] = X[k,:]
-    if k < N_SYK_sample:
-      H, J = syk_hamiltonian(N, disorder_strength, Xi)
-      eigenvalues, eigenvectors = np.linalg.eigh(H)
-      y[k, 0:hilbert_space_dimension] = eigenvectors[0]/np.linalg.norm(eigenvectors[0])
-      y[k,hilbert_space_dimension] = 1
-      z[k,:] = y[k,:]
+  for k in range(N_SYK_sample):
+    H, J = syk_hamiltonian(N, disorder_strength, Xi)
+    eigenvalues, eigenvectors = np.linalg.eigh(H)
+    y[k, 0:hilbert_space_dimension] = eigenvectors[0]/np.linalg.norm(eigenvectors[0])
+    y[k,hilbert_space_dimension] = 1
       #print(k)
       #print("="*80)
 
   column_names = [f'C_WF_{i}' for i in range(hilbert_space_dimension)]
-  z1 = z[:,0:hilbert_space_dimension]
-  z2 = z[:,hilbert_space_dimension]
+  z1 = y[:,0:hilbert_space_dimension]
+  z2 = y[:,hilbert_space_dimension]
   z1 = pd.DataFrame(z1 , columns = column_names)
   z2 = pd.DataFrame(z2 > 0.1, columns = ['is SYK'])
   return pd.concat([z1,z2],axis=1) , J
   #return X, y, z
 
 
+def preprocess_data(WF, J, features):
+    WF = WF[WF['is SYK']==True]
+    features = WF.columns.drop(['is SYK'])
+    WF = WF[features]
+    J = np.sort(J[J != 0])
+    return WF, J
 
-data , J = my_gen(1, 8)
+data = []
 
-data = data[data['is SYK']==True]
-features = data.columns.drop(['is SYK'])
-data = data[features]
-J = np.sort(J[J != 0])
+Ns =[6,8,10,12]
+N_list = [f"N{i}" for i in Ns]
+WF = {n :[] for n in N_list}
+Js = {n :[] for n in N_list}
+features = {"N6":features_N6 ,"N8":features_N8, "N10":features_N10, "N12":features_N12}
+
+for n in Ns:
+    WF[f"N{n}"], Js[f"N{n}"] = my_gen(1, n) #use my_gen
+    WF[f"N{n}"], Js[f"N{n}"] = preprocess_data(WF[f"N{n}"], Js[f"N{n}"], features[f"N{n}"])
+    data.append((WF[f"N{n}"], Js[f"N{n}"]))
+
+for i, n in enumerate(N_list):
+  WF[n], Js[n] = data[i]
+
+
+print(len(Js["N10"]))
 
 
 
-
-print(len(J))
 ###############################################################################################
 
-encoder_N8 = model_N8.layers[0]#How to access the encoder
+encoder_N8 = model_N8.layers[0]
 
-#print(encoder_N8.predict(data))
-
-#non_zero_elements = J[J != 0]
+J = Js['N8']
 
 #print(non_zero_elements)
-J_predict = encoder_N8.predict(data)
+J_predict = encoder_N8.predict(WF['N8'])
 
 J = np.sort(J[J != 0])
 J_predict = np.sort(J_predict)
 
-print(len(J_predict))
-print('='*80)
-print(len(J))
 
 # Ensure both arrays have the same length
 #min_length = min(len(J), len(J_predict))
@@ -448,9 +411,80 @@ plt.grid(True)
 plt.show()
 
 
+##########################################
+encoded_samples = encoder_N8.predict(WF['N8'])
+decoder_N8 = model_N8.layers[1]
+decoded_samples = decoder_N8.predict(encoded_samples)
+
+
+
+# Visualize original and reconstructed samples
+
+plt.subplot(2, 5, i + 1)
+plt.imshow((WF['N8'].values).reshape(4, 4), cmap='viridis')
+plt.title('Original_WF')
+plt.axis('off')
+
+plt.subplot(2, 5, i + 6)
+plt.imshow(decoded_samples.reshape(4, 4), cmap='viridis')
+plt.title('Recons_WF')
+plt.axis('off')
+
+plt.show()
+
 ##########################################################
 
-#check the predicted WF
+#for N=12
+encoder_N12 = model_N12.layers[0]
+
+J = Js['N12']
+
+#print(non_zero_elements)
+J_predict = encoder_N12.predict(WF['N12'])
+
+J = np.sort(J[J != 0])
+J_predict = np.sort(J_predict)
+
+
+# Ensure both arrays have the same length
+#min_length = min(len(J), len(J_predict))
+#J = J[:min_length]
+#J_predict = J_predict[:min_length]
+
+
+plt.figure(figsize=(8, 6))
+plt.scatter(J, J_predict, color='blue', alpha=0.5)
+plt.scatter(J, J, color='red')  # Plot y = x line for reference
+plt.plot(J, J, color='red', linestyle = '--')  # Plot y = x line for reference
+plt.title('Actual vs. Predicted Values')
+plt.xlabel('Actual Values (J)')
+plt.ylabel('Predicted Values (J_predict)')
+plt.grid(True)
+plt.show()
+
+
+encoded_samples = encoder_N12.predict(WF['N12'])
+decoder_N12 = model_N12.layers[1]
+decoded_samples = decoder_N12.predict(encoded_samples)
+
+
+
+# Visualize original and reconstructed samples
+i=0
+plt.subplot(2, 5, i + 1)
+plt.imshow((WF['N12'].values).reshape(8, 8), cmap='viridis')
+plt.title('Original_WF')
+plt.axis('off')
+
+plt.subplot(2, 5, i + 6)
+plt.imshow(decoded_samples.reshape(8, 8), cmap='viridis')
+plt.title('Recons_WF')
+plt.axis('off')
+
+plt.show()
+
+###################################################################################
+#N=8 WF check
 
 encoded_samples = encoder_N8.predict(x_test_N8[:5])
 decoder_N8 = model_N8.layers[1]
@@ -467,6 +501,29 @@ for i in range(5):
 
     plt.subplot(2, 5, i + 6)
     plt.imshow(decoded_samples[i].reshape(4, 4), cmap='viridis')
+    plt.title('Recons_WF')
+    plt.axis('off')
+
+plt.show()
+
+#######################################################
+#N=12 WF Check
+
+encoded_samples = encoder_N12.predict(x_test_N12[:5])
+decoder_N12 = model_N12.layers[1]
+decoded_samples = decoder_N12.predict(encoded_samples)
+
+
+
+# Visualize original and reconstructed samples
+for i in range(5):
+    plt.subplot(2, 5, i + 1)
+    plt.imshow((x_test_N12.iloc[i].values).reshape(8, 8), cmap='viridis')
+    plt.title('Original_WF')
+    plt.axis('off')
+
+    plt.subplot(2, 5, i + 6)
+    plt.imshow(decoded_samples[i].reshape(8, 8), cmap='viridis')
     plt.title('Recons_WF')
     plt.axis('off')
 

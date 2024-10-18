@@ -4,7 +4,7 @@ This repository is based on the research presented in {PhysRevResearch.3.023020}
 
 ## Objective
 
-The primary objective of this repository is to explore the properties of the SYK model's ground state using neural networks. Specifically, we aim to determine whether a neural network can classify whether a given wave function originates from an SYK Hamiltonian. The performance metric for this classification is the overlap between the provided wave function and the actual SYK ground state. Additionally, an autoencoder neural network is utilized to assess the network's ability to capture the essential features of the SYK model's ground state.
+The primary objective of this repository is to explore the properties of the SYK model's ground state using neural networks using TensorFlow. Specifically, we aim to determine whether a neural network can classify whether a given wave function originates from an SYK Hamiltonian. The performance metric for this classification is the overlap between the provided wave function and the actual SYK ground state. Additionally, an autoencoder neural network is utilized to assess the network's ability to capture the essential features of the SYK model's ground state.
 
 
 ## Usage

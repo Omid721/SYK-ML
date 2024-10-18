@@ -1,6 +1,6 @@
 # SYK_ML
 
-This repository is based on the research presented in {https://journals.aps.org/prresearch/pdf/10.1103/PhysRevResearch.3.023020}, which reveals that the ground state of the Sachdev-Ye-Kitaev (SYK) model is significantly more complex than a simple Gaussian state. However, various intelligent ansätze can be employed to simplify the analysis.
+This repository is based on the research presented in {PhysRevResearch.3.023020}, which reveals that the ground state of the Sachdev-Ye-Kitaev (SYK) model is significantly more complex than a simple Gaussian state. However, various intelligent ansätze can be employed to simplify the analysis.
 
 ## Objective
 

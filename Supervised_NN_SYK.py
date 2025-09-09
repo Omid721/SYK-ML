@@ -1,95 +1,59 @@
-import time
+"""
+This script implements a supervised neural network to classify SYK ground states.
+The model is trained on a dataset of SYK ground states and Haar random states.
+The performance of the model is evaluated by its accuracy on a test set.
+"""
+
 import warnings
-import pickle
-import io
-import requests
-import zipfile
-import contextlib  # For redirecting stdout
-import sys
 
-# Importing libraries for numerical computations and machine learning
-import multiprocessing as mp
-import numpy as np
-import scipy as sp
-import pandas as pd
-import sympy as sym
 import matplotlib.pyplot as plt
-import seaborn as sb
+import pandas as pd
 import tensorflow as tf
-import sklearn as sk
-
-# Importing submodules from sklearn
-from sklearn.dummy import DummyClassifier, DummyRegressor
-from sklearn.linear_model import (RidgeClassifier, SGDClassifier, Ridge, Lasso,
-                                   LinearRegression, LogisticRegression)
-from sklearn.tree import (DecisionTreeClassifier, DecisionTreeRegressor)
-from sklearn.svm import SVC, SVR
-from sklearn.neighbors import (KNeighborsClassifier, KNeighborsRegressor)
-from sklearn.ensemble import (BaggingClassifier, ExtraTreesClassifier,
-                              RandomForestClassifier, GradientBoostingClassifier,
-                              AdaBoostClassifier)
-from sklearn.feature_selection import RFE, RFECV, SelectFromModel
-from sklearn.decomposition import PCA
-from sklearn.manifold import (MDS, LocallyLinearEmbedding, Isomap,
-                               SpectralEmbedding, TSNE)
 from sklearn.model_selection import train_test_split
-import sklearn.utils
+from sklearn.utils import shuffle
 
 # Suppress warnings
-warnings.filterwarnings('ignore')
+warnings.filterwarnings("ignore")
 
-# Load data from Google Drive
-from google.colab import drive
 
-# Mount Google Drive
-drive.mount('/content/drive')
-
-# Define file paths for the datasets
-zip_file_paths = {
-    'N6': '/content/drive/MyDrive/Data/data_SYK_N6.zip',
-    'N8': '/content/drive/MyDrive/Data/data_SYK_N8.zip',
-    'N10': '/content/drive/MyDrive/Data/data_SYK_N10.zip',
-    'N12': '/content/drive/MyDrive/Data/data_SYK_N12.zip'
-}
-
-# Function to read data from ZIP files
-def load_data(zip_path):
-    """Load data from a specified ZIP file.
+def load_data(file_path):
+    """Load data from a specified CSV file.
 
     Args:
-        zip_path (str): Path to the ZIP file.
+        file_path (str): Path to the CSV file.
 
     Returns:
         pd.DataFrame: DataFrame containing the loaded data.
     """
-    with zipfile.ZipFile(zip_path, 'r') as archive:
-        with archive.open('data') as file:
-            return pd.read_csv(file)
+    return pd.read_csv(file_path)
 
-# Load datasets
-data = {key: load_data(path) for key, path in zip_file_paths.items()}
 
-# Prepare data for training and testing
-test_size = 0.05
-datasets = {}
+def preprocess_data(data):
+    """Preprocess the data for training and testing.
 
-for key in data.keys():
-    shuffled_data = sk.utils.shuffle(data[key], random_state=0)
-    target = 'is SYK'
-    features = shuffled_data.columns.drop([target, 'Unnamed: 0'])
-    y = shuffled_data[target].astype(int)
-    X = shuffled_data[features]
-    X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0, test_size=test_size)
+    Args:
+        data (pd.DataFrame): The input data.
 
-    datasets[key] = {
-        'X_train': X_train,
-        'X_test': X_test,
-        'y_train': y_train,
-        'y_test': y_test,
-        'features': features
-    }
+    Returns:
+        tuple: A tuple containing the training and testing data.
+    """
+    # Shuffle the data
+    data = shuffle(data, random_state=0)
 
-# Function to build a neural network model
+    # Define the target and features
+    target = "is_SYK"
+    features = data.columns.drop(target)
+
+    # Split the data into training and testing sets
+    X = data[features]
+    y = data[target].astype(int)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42
+    )
+
+    return X_train, X_test, y_train, y_test, features
+
+
 def build_nn_model(input_shape):
     """Build a neural network model for binary classification.
 
@@ -99,46 +63,109 @@ def build_nn_model(input_shape):
     Returns:
         tf.keras.Sequential: Compiled neural network model.
     """
-    model = tf.keras.Sequential([
-        tf.keras.layers.Dense(64, activation='relu', input_shape=(input_shape,)),
-        tf.keras.layers.Dense(32, activation='relu'),
-        tf.keras.layers.Dense(1, activation='sigmoid')  # Sigmoid for binary classification
-    ])
+    model = tf.keras.Sequential(
+        [
+            tf.keras.layers.Dense(
+                64, activation="relu", input_shape=(input_shape,)
+            ),
+            tf.keras.layers.Dense(32, activation="relu"),
+            tf.keras.layers.Dense(
+                1, activation="sigmoid"
+            ),  # Sigmoid for binary classification
+        ]
+    )
     return model
 
-# Create and compile models for each dataset
-models = {}
-for key, dataset in datasets.items():
-    model = build_nn_model(len(dataset['features']))
-    model.compile(loss='binary_crossentropy', optimizer=tf.keras.optimizers.Adam(learning_rate=0.001), metrics=['accuracy'])
-    model.fit(dataset['X_train'], dataset['y_train'], epochs=50, batch_size=32)
-    models[key] = model
 
-# Evaluate models and gather loss and accuracy metrics
-losses = {}
-accuracies = {}
-for key, model in models.items():
-    loss, accuracy = model.evaluate(datasets[key]['X_test'], datasets[key]['y_test'])
-    losses[key] = loss
-    accuracies[key] = accuracy
+def train_model(model, X_train, y_train, epochs=50, batch_size=32):
+    """Train the neural network model.
 
-# Print loss and accuracy
-print("Losses:", losses)
-print("Accuracies:", accuracies)
-print("=" * 80)
+    Args:
+        model (tf.keras.Sequential): The neural network model.
+        X_train (pd.DataFrame): The training features.
+        y_train (pd.Series): The training target.
+        epochs (int): The number of epochs to train for.
+        batch_size (int): The batch size for training.
+    """
+    model.compile(
+        loss="binary_crossentropy",
+        optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
+        metrics=["accuracy"],
+    )
+    model.fit(X_train, y_train, epochs=epochs, batch_size=batch_size, verbose=0)
 
-# Visualize loss and accuracy
-fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
 
-# Plot Loss
-ax1.bar(losses.keys(), losses.values(), color='red')
-ax1.set_title('Loss')
-ax1.set_ylabel('Loss Value')
+def evaluate_model(model, X_test, y_test):
+    """Evaluate the neural network model.
 
-# Plot Accuracy
-ax2.bar(accuracies.keys(), accuracies.values(), color='blue')
-ax2.set_title('Accuracy')
-ax2.set_ylabel('Accuracy Value')
+    Args:
+        model (tf.keras.Sequential): The neural network model.
+        X_test (pd.DataFrame): The testing features.
+        y_test (pd.Series): The testing target.
 
-plt.tight_layout()
-plt.show()
+    Returns:
+        tuple: A tuple containing the loss and accuracy.
+    """
+    loss, accuracy = model.evaluate(X_test, y_test, verbose=0)
+    return loss, accuracy
+
+
+def plot_results(results):
+    """Plot the loss and accuracy of the models.
+
+    Args:
+        results (dict): A dictionary containing the loss and accuracy for each N.
+    """
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
+
+    # Plot Loss
+    ax1.bar(results.keys(), [r["loss"] for r in results.values()], color="red")
+    ax1.set_title("Loss")
+    ax1.set_ylabel("Loss Value")
+
+    # Plot Accuracy
+    ax2.bar(
+        results.keys(), [r["accuracy"] for r in results.values()], color="blue"
+    )
+    ax2.set_title("Accuracy")
+    ax2.set_ylabel("Accuracy Value")
+
+    plt.tight_layout()
+    plt.show()
+
+
+def main():
+    """
+    Main function to run the supervised learning experiment.
+    """
+    # Define the file paths for the datasets
+    N_values = [8]
+    file_paths = {f"N{N}": f"SYK_data_N{N}.csv" for N in N_values}
+
+    # Dictionary to store the results
+    results = {}
+
+    # Iterate over the datasets
+    for key, path in file_paths.items():
+        print(f"Processing {key} data...")
+
+        # Load and preprocess the data
+        data = load_data(path)
+        X_train, X_test, y_train, y_test, features = preprocess_data(data)
+
+        # Build, train, and evaluate the model
+        model = build_nn_model(len(features))
+        train_model(model, X_train, y_train)
+        loss, accuracy = evaluate_model(model, X_test, y_test)
+
+        # Store the results
+        results[key] = {"loss": loss, "accuracy": accuracy}
+        print(f"Test Loss for {key}: {loss:.4f}")
+        print(f"Test Accuracy for {key}: {accuracy:.4f}")
+
+    # Plot the results
+    plot_results(results)
+
+
+if __name__ == "__main__":
+    main()
